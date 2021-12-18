@@ -1,0 +1,40 @@
+services:
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    depends_on:
+      - mongo
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+
+  facialrecog:
+    image: facial-recognition:latest
+    runtime: nvidia
+    #uncomment following if performing detection on a live stream
+    #restart: always
+    depends_on:
+      - mongo
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+    volumes:
+      - "./media-in:/media-in"
+      - "./media-out:/media-out"
+    #uncomment the following line to perform face detection on the gilette ad, you will need to download it first as mp4 from youtube and place in media-in
+    #https://www.youtube.com/watch?v=koPmuEyP3a0
+    command: python3 streamrecog.py -cn gilette -su "filesrc location=/media-in/gilette-ad.mp4 ! qtdemux ! h264parse ! decodebin ! videoconvert ! videorate ! video/x-raw,framerate=1/3 ! avenc_bmp ! appsink name=sink"
+    environment:
+      mongo.url: mongodb://root:example@media:27017/
